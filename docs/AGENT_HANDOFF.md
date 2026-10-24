@@ -81,7 +81,7 @@ All empirical checks were verified on **24 October 2026**:
 
 | Validation Check | Empirical Result | Verification Boundary |
 | :--- | :---: | :--- |
-| **Python Regression Suite** | **58 passed** in 47.01s | Local SQLite, PostgreSQL container, and REA security regressions |
+| **Python Regression Suite** | **59 passed** in 48.18s | Local SQLite, PostgreSQL container, and REA security regressions |
 | **JavaScript Syntax Audit** | **Passed** | Clean syntax confirmed via `node --check` on portal JS |
 | **Synthetic Evaluation** | **60/60 correct (100%)** | 60 deterministic test cases, mock gateway |
 | **Verified Resolution Ledger** | **100% matched** | Ledger, operation, provider reference, and ticket verified |

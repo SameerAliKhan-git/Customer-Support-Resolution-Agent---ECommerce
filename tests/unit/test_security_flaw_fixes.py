@@ -90,3 +90,18 @@ async def test_demo_admin_role_distinction(monkeypatch):
     assert rev_user.role == "reviewer"
     assert rev_user.is_admin is False
     assert rev_user.is_reviewer is True
+
+@pytest.mark.asyncio
+async def test_metrics_endpoint():
+    """Verify GET /api/metrics returns valid operational stats and handles timedelta correctly."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        res = await client.get("/api/metrics", headers={"Authorization": "Bearer rev_lead"})
+        assert res.status_code == 200
+        data = res.json()
+        assert "jobs" in data
+        assert "refunds" in data
+        assert "escalated_tickets" in data
+        assert "overdue_tickets" in data
+        assert "pending_approvals" in data
+        assert "pending_reconciliations" in data
+
