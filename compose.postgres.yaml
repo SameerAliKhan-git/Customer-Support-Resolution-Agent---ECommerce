@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: support
+      POSTGRES_USER: support
+      POSTGRES_PASSWORD: local-demo-password
+    ports:
+      - "127.0.0.1:15432:5432"
+    volumes:
+      - postgres-support-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U support -d support"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  support-agent:
+    build: .
+    ports:
+      - "127.0.0.1:8001:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://support:local-demo-password@postgres:5432/support
+      SYNC_DATABASE_URL: postgresql+psycopg://support:local-demo-password@postgres:5432/support
+      CHECKPOINT_DATABASE_URL: postgresql://support:local-demo-password@postgres:5432/support
+      ENVIRONMENT: development
+      AUTH_MODE: demo
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["sh", "-c", "python -m alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1"]
+volumes:
+  postgres-support-data:

@@ -1,0 +1,100 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-support}
+      POSTGRES_USER: ${POSTGRES_USER:-support}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-prod_secure_password_replace_in_secrets}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-support} -d ${POSTGRES_DB:-support}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+
+  migrate:
+    build: .
+    restart: "no"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-support}:${POSTGRES_PASSWORD:-prod_secure_password_replace_in_secrets}@postgres:5432/${POSTGRES_DB:-support}
+      SYNC_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-support}:${POSTGRES_PASSWORD:-prod_secure_password_replace_in_secrets}@postgres:5432/${POSTGRES_DB:-support}
+      CHECKPOINT_DATABASE_URL: postgresql://${POSTGRES_USER:-support}:${POSTGRES_PASSWORD:-prod_secure_password_replace_in_secrets}@postgres:5432/${POSTGRES_DB:-support}
+      ENVIRONMENT: production
+      AUTO_CREATE_SCHEMA: "false"
+      SEED_DEMO_DATA: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["python", "-m", "scripts.migrate"]
+
+  api:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      ENVIRONMENT: production
+      AUTH_MODE: oidc
+      ASYNC_WORKFLOWS: "true"
+      AUTO_CREATE_SCHEMA: "false"
+      SEED_DEMO_DATA: "false"
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-support}:${POSTGRES_PASSWORD:-prod_secure_password_replace_in_secrets}@postgres:5432/${POSTGRES_DB:-support}
+      SYNC_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-support}:${POSTGRES_PASSWORD:-prod_secure_password_replace_in_secrets}@postgres:5432/${POSTGRES_DB:-support}
+      CHECKPOINT_DATABASE_URL: postgresql://${POSTGRES_USER:-support}:${POSTGRES_PASSWORD:-prod_secure_password_replace_in_secrets}@postgres:5432/${POSTGRES_DB:-support}
+      OIDC_ISSUER: ${OIDC_ISSUER:-https://auth.example.com/}
+      OIDC_AUDIENCE: ${OIDC_AUDIENCE:-support-api}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-support-portal}
+      OIDC_REQUIRE_STAFF_MFA: "true"
+      SECRET_KEY: ${SECRET_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/ready')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+
+  worker:
+    build: .
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: production
+      AUTH_MODE: oidc
+      ASYNC_WORKFLOWS: "true"
+      AUTO_CREATE_SCHEMA: "false"
+      SEED_DEMO_DATA: "false"
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-support}:${POSTGRES_PASSWORD:-prod_secure_password_replace_in_secrets}@postgres:5432/${POSTGRES_DB:-support}
+      SYNC_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-support}:${POSTGRES_PASSWORD:-prod_secure_password_replace_in_secrets}@postgres:5432/${POSTGRES_DB:-support}
+      CHECKPOINT_DATABASE_URL: postgresql://${POSTGRES_USER:-support}:${POSTGRES_PASSWORD:-prod_secure_password_replace_in_secrets}@postgres:5432/${POSTGRES_DB:-support}
+      SECRET_KEY: ${SECRET_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: ["python", "-m", "scripts.worker"]
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+
+volumes:
+  postgres_prod_data:

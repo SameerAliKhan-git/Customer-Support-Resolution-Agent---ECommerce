@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customer Support Resolution Agent - ElectroVault Global</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header class="header">
+    <div class="brand">
+      <div class="logo-badge">⚡</div>
+      <div class="brand-text">
+        <h1>ElectroVault Resolution Agent</h1>
+        <p>Local demo • Policy retrieval, human review and simulated payments</p>
+      </div>
+    </div>
+    <div class="header-controls">
+      <div class="health-badge">
+        <span class="pulse-dot"></span>
+        <span>LangGraph & FastAPI Active</span>
+      </div>
+      <div class="role-pill">
+        <span id="identity-label">Sign in to continue</span>
+      </div>
+      <a href="/docs" target="_blank" class="role-pill" style="text-decoration:none; color:#38bdf8;">
+        <span>API Docs ↗</span>
+      </a>
+    </div>
+  </header>
+
+  <section class="card session-controls">
+    <button type="button" id="sign-in" class="btn">Sign in</button>
+    <button type="button" id="sign-out" class="btn">Sign out</button>
+    <label for="session-token">Provisioned token (development signed mode)</label>
+    <input id="session-token" class="form-input" type="password" autocomplete="off" hidden>
+    <p id="portal-status" role="status" aria-live="polite"></p>
+  </section>
+  <!-- Interactive Demo Scenarios Bar -->
+  <section class="scenarios-container">
+    <div class="section-label">
+      <span>🎯 1-Click Portfolio Demo Scenarios</span>
+      <span style="font-weight:400; color:var(--text-dim);">(Click any scenario to auto-populate and test)</span>
+    </div>
+    <div class="scenario-chips" id="scenario-chips">
+      <!-- Injected via JavaScript -->
+    </div>
+    <div id="scenario-hint" style="display:none; font-size:12px; margin-top:8px; padding:8px 12px; background:rgba(99,102,241,0.08); border-left:3px solid var(--accent-primary); border-radius:4px;"></div>
+  </section>
+
+  <!-- Main 2-Column Dashboard Grid -->
+  <main class="dashboard-grid">
+
+    <!-- Left Column: Input Form & Active Ticket -->
+    <div class="left-col">
+
+      <!-- Customer Complaint Input Card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>💬 Customer Complaint</span>
+          </div>
+          <span class="card-badge">Demo Identity</span>
+        </div>
+
+        <form id="complaint-form">
+          <div class="form-group">
+            <label class="form-label" for="customer-id">Demo Customer ID</label>
+            <input type="text" id="customer-id" class="form-input" value="cust_1001" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="order-id">Associated Order ID (Optional / Auto-Extracted)</label>
+            <input type="text" id="order-id" class="form-input" value="ord_1001" placeholder="e.g. ord_1001">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="complaint-message">Complaint / Inquired Issue</label>
+            <textarea id="complaint-message" class="form-textarea" placeholder="Describe the issue with your order..." required>I returned my headphones last week, but I still haven't received my refund.</textarea>
+          </div>
+
+          <button type="submit" id="submit-btn" class="btn btn-primary" style="width:100%;">
+            <span>Submit to AI Resolution Agent</span>
+          </button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Case history</h2><div id="case-history"></div>
+        <form id="clarification-form" hidden>
+          <h3>Additional information requested</h3>
+          <label for="clarification-order">Order ID</label><input id="clarification-order" class="form-input">
+          <label for="clarification-message">Additional details</label><textarea id="clarification-message" class="form-textarea" required minlength="1" maxlength="10000"></textarea>
+          <button class="btn" type="submit">Send information</button>
+        </form>
+      </div>
+      <!-- Live Audit Trail Card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>🔒 Audit History</span>
+          </div>
+          <span class="card-badge">Server Records</span>
+        </div>
+        <div class="audit-list" id="audit-trail">
+          <span style="font-size:12px; color:var(--text-dim);">Submit an inquiry or select a scenario to view audit records.</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Agent Workflow Progression & Outcomes -->
+    <div class="right-col">
+
+      <!-- LangGraph Workflow Stepper -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>⚙️ LangGraph Multi-Agent Orchestration</span>
+          </div>
+          <span class="card-badge">StateGraph Engine</span>
+        </div>
+
+        <div class="workflow-stepper">
+          <!-- 1. Classify -->
+          <div class="step-node" id="step-classify">
+            <div class="step-icon">1</div>
+            <div class="step-content">
+              <div class="step-title">
+                <span>Classify Intent</span>
+                <span class="badge" id="badge-classify"></span>
+              </div>
+              <div class="step-desc" data-default="Categorize issue & check escalation triggers">Awaiting customer input</div>
+            </div>
+          </div>
+
+          <!-- 2. Investigate -->
+          <div class="step-node" id="step-investigate">
+            <div class="step-icon">2</div>
+            <div class="step-content">
+              <div class="step-title">
+                <span>Investigate Records</span>
+              </div>
+              <div class="step-desc" data-default="Query orders, returns, and payment balances">Awaiting investigation</div>
+            </div>
+          </div>
+
+          <!-- 3. Policy RAG -->
+          <div class="step-node" id="step-policy">
+            <div class="step-icon">3</div>
+            <div class="step-content">
+              <div class="step-title">
+                <span>Policy RAG Retrieval</span>
+              </div>
+              <div class="step-desc" data-default="Retrieve versioned company policies with section citations">Awaiting policy search</div>
+            </div>
+          </div>
+
+          <!-- 4. Proposal Generation -->
+          <div class="step-node" id="step-proposal">
+            <div class="step-icon">4</div>
+            <div class="step-content">
+              <div class="step-title">
+                <span>Propose Resolution</span>
+              </div>
+              <div class="step-desc" data-default="Evaluate facts against business rules & prepare typed proposal">Awaiting proposal</div>
+            </div>
+          </div>
+
+          <!-- 5. Human Review Pause (if required) -->
+          <div class="step-node" id="step-approval">
+            <div class="step-icon">5</div>
+            <div class="step-content">
+              <div class="step-title">
+                <span>Supervisor Review Pause</span>
+              </div>
+              <div class="step-desc" data-default="Interrupt execution: human approval required before financial action">Awaiting review gate</div>
+            </div>
+          </div>
+
+          <!-- 6. Safe Disbursement & Reconciliation -->
+          <div class="step-node" id="step-execution">
+            <div class="step-icon">6</div>
+            <div class="step-content">
+              <div class="step-title">
+                <span>Disbursement & Idempotency</span>
+              </div>
+              <div class="step-desc" data-default="Execute via stable key & reconcile uncertain network outcomes">Awaiting execution</div>
+            </div>
+          </div>
+
+          <!-- 7. Verified Outcome -->
+          <div class="step-node" id="step-outcome">
+            <div class="step-icon">7</div>
+            <div class="step-content">
+              <div class="step-title">
+                <span>Verified Outcome</span>
+              </div>
+              <div class="step-desc" data-default="Grounded customer update reflecting verified external reality">Awaiting outcome</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Human Reviewer Approval Queue (Interactive) -->
+      <div class="card" id="reviewer-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>🛡️ Support Reviewer Approval Queue</span>
+          </div>
+          <span class="card-badge" style="background:rgba(245,158,11,0.15); color:#fbbf24;">
+            Pending: <strong id="pending-count">0</strong>
+          </span>
+        </div>
+        <div id="approval-container">
+          <span style="font-size:12px; color:var(--text-dim);">No pending approvals. When a refund is proposed, the approval gate will appear here.</span>
+        </div>
+      </div>
+
+      <!-- Evidence & Policy Citations Card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>📑 Verified Evidence & Policy Citations</span>
+          </div>
+          <span class="card-badge">Ground Truth</span>
+        </div>
+        
+        <div style="margin-bottom:12px;">
+          <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-dim); margin-bottom:6px;">Verified Facts (Investigation Snapshot):</div>
+          <div id="evidence-panel">
+            <span style="font-size:12px; color:var(--text-dim);">No active investigation.</span>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-dim); margin-bottom:6px;">Policy Citations:</div>
+          <div class="citations-list" id="citations-panel">
+            <span style="font-size:12px; color:var(--text-dim);">No policy citations loaded yet.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Final Outcome Card -->
+      <div class="card" id="outcome-panel" style="display:none;">
+        <div class="card-header">
+          <div class="card-title">
+            <span>✅ Verified Resolution Outcome</span>
+          </div>
+          <span class="card-badge">Confirmed Result</span>
+        </div>
+        <div class="outcome-box" id="outcome-box">
+          <p id="outcome-text" style="font-size:14px; font-weight:500;"></p>
+          <div id="outcome-ref-row" style="margin-top:10px; font-size:12px; display:none;">
+            <span>External Gateway Transaction Reference: </span>
+            <span class="ref-code" id="outcome-ref"></span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <script src="/static/session.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>

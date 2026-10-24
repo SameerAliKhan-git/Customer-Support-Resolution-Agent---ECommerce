@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-23",
+  "scope": "Production readiness probes and remediation verification",
+  "results": [
+    {
+      "probe": "late_return_service_gate",
+      "return_initiated_days_after_delivery": 45,
+      "remediation": "Authoritative validate_refund() service gate checks return timestamp against delivery date and 30-day window independently of agent routing.",
+      "remediation_status": "RESOLVED_AND_VERIFIED",
+      "verification_test": "tests/integration/test_hardening.py::test_service_gate_rejects_ineligible[late_return]",
+      "refund_succeeded": false
+    },
+    {
+      "probe": "commit_before_provider_crash",
+      "remediation": "Recovery logic in RefundService._recover() safely retries using the original idempotency key and request payload for CLAIMED/SENDING/PROCESSING states when provider returns TRANSACTION_NOT_FOUND with safe_to_resend=true.",
+      "remediation_status": "RESOLVED_AND_VERIFIED",
+      "verification_test": "tests/integration/test_hardening.py::test_crash_before_send_reuses_original_key",
+      "retry_statuses": ["SUCCEEDED"],
+      "provider_effects": 1,
+      "workflow_marks_completed": true
+    },
+    {
+      "probe": "declined_refund_reproposal",
+      "remediation": "Provider decline marks the operation DECLINED and the proposal DECLINED. approval_service.create_proposal() recognizes terminal proposals and creates a fresh proposal with a new ID requiring fresh approval.",
+      "remediation_status": "RESOLVED_AND_VERIFIED",
+      "verification_test": "tests/integration/test_hardening.py::test_decline_allows_fresh_proposal_requires_fresh_approval",
+      "provider_status": "DECLINED",
+      "proposal_status": "PENDING_FRESH_REVIEW",
+      "new_proposal_reuses_declined_proposal": false
+    },
+    {
+      "probe": "payment_state_validation",
+      "initial_payment_status": "VOIDED",
+      "remediation": "validate_refund() enforces status IN ('CAPTURED', 'PARTIALLY_REFUNDED') and database CheckConstraint payment_valid_status enforces status invariants.",
+      "remediation_status": "RESOLVED_AND_VERIFIED",
+      "verification_test": "tests/integration/test_hardening.py::test_service_gate_rejects_ineligible[voided_payment]",
+      "refund_succeeded": false
+    }
+  ]
+}
