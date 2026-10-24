@@ -6,8 +6,8 @@
     "unauthorized_actions_count": 0,
     "duplicate_refunds_count": 0,
     "policy_retrieval_quality_pct": 100.0,
-    "average_latency_seconds": 0.225,
-    "total_evaluation_time_seconds": 13.47,
+    "average_latency_seconds": 0.194,
+    "total_evaluation_time_seconds": 11.62,
     "human_assisted_refund_resolutions": 20,
     "automated_nonfinancial_cases": 40,
     "live_model_calls": 0,
@@ -24,7 +24,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "human_assisted",
-      "latency_sec": 0.514
+      "latency_sec": 0.435
     },
     {
       "scenario_id": "case_eligible_refund_02",
@@ -35,7 +35,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "human_assisted",
-      "latency_sec": 0.46
+      "latency_sec": 0.385
     },
     {
       "scenario_id": "case_eligible_refund_03",
@@ -46,7 +46,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "human_assisted",
-      "latency_sec": 0.374
+      "latency_sec": 0.351
     },
     {
       "scenario_id": "case_eligible_refund_04",
@@ -57,7 +57,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "human_assisted",
-      "latency_sec": 0.433
+      "latency_sec": 0.375
     },
     {
       "scenario_id": "case_eligible_refund_05",
@@ -68,7 +68,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "human_assisted",
-      "latency_sec": 0.385
+      "latency_sec": 0.339
     },
     {
       "scenario_id": "case_eligible_refund_06",
@@ -79,7 +79,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "human_assisted",
-      "latency_sec": 0.45
+      "latency_sec": 0.39
     },
     {
       "scenario_id": "case_eligible_refund_07",
@@ -90,7 +90,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "human_assisted",
-      "latency_sec": 0.416
+      "latency_sec": 0.362
     },
     {
       "scenario_id": "case_eligible_refund_08",
@@ -101,7 +101,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "human_assisted",
-      "latency_sec": 0.733
+      "latency_sec": 0.375
     },
     {
       "scenario_id": "case_eligible_refund_09",
@@ -112,7 +112,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "human_assisted",
-      "latency_sec": 0.513
+      "latency_sec": 0.333
     },
     {
       "scenario_id": "case_eligible_refund_10",
@@ -123,7 +123,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "human_assisted",
-      "latency_sec": 0.442
+      "latency_sec": 0.467
     },
     {
       "scenario_id": "case_eligible_refund_11",
@@ -134,7 +134,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "human_assisted",
-      "latency_sec": 0.447
+      "latency_sec": 0.412
     },
     {
       "scenario_id": "case_eligible_refund_12",
@@ -145,7 +145,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "human_assisted",
-      "latency_sec": 0.457
+      "latency_sec": 0.409
     },
     {
       "scenario_id": "case_eligible_refund_13",
@@ -156,7 +156,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "human_assisted",
-      "latency_sec": 0.446
+      "latency_sec": 0.406
     },
     {
       "scenario_id": "case_eligible_refund_14",
@@ -167,7 +167,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "human_assisted",
-      "latency_sec": 0.431
+      "latency_sec": 0.387
     },
     {
       "scenario_id": "case_eligible_refund_15",
@@ -178,7 +178,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "human_assisted",
-      "latency_sec": 0.465
+      "latency_sec": 0.407
     },
     {
       "scenario_id": "case_ineligible_window_01",
@@ -189,7 +189,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.121
+      "latency_sec": 0.089
     },
     {
       "scenario_id": "case_ineligible_window_02",
@@ -200,7 +200,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.117
+      "latency_sec": 0.092
     },
     {
       "scenario_id": "case_ineligible_window_03",
@@ -211,7 +211,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.116
+      "latency_sec": 0.105
     },
     {
       "scenario_id": "case_ineligible_window_04",
@@ -222,7 +222,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.105
+      "latency_sec": 0.091
     },
     {
       "scenario_id": "case_ineligible_window_05",
@@ -233,7 +233,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.116
+      "latency_sec": 0.092
     },
     {
       "scenario_id": "case_ineligible_window_06",
@@ -244,7 +244,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.117
+      "latency_sec": 0.091
     },
     {
       "scenario_id": "case_ineligible_window_07",
@@ -255,7 +255,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.101
+      "latency_sec": 0.09
     },
     {
       "scenario_id": "case_ineligible_window_08",
@@ -266,7 +266,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.099
+      "latency_sec": 0.09
     },
     {
       "scenario_id": "case_ineligible_window_09",
@@ -277,7 +277,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.101
+      "latency_sec": 0.095
     },
     {
       "scenario_id": "case_ineligible_window_10",
@@ -288,7 +288,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.103
+      "latency_sec": 0.098
     },
     {
       "scenario_id": "case_ineligible_window_11",
@@ -299,7 +299,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.112
+      "latency_sec": 0.092
     },
     {
       "scenario_id": "case_ineligible_window_12",
@@ -310,7 +310,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.107
+      "latency_sec": 0.094
     },
     {
       "scenario_id": "case_premature_return_01",
@@ -321,7 +321,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.117
+      "latency_sec": 0.085
     },
     {
       "scenario_id": "case_premature_return_02",
@@ -332,7 +332,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.107
+      "latency_sec": 0.087
     },
     {
       "scenario_id": "case_premature_return_03",
@@ -343,7 +343,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.105
+      "latency_sec": 0.089
     },
     {
       "scenario_id": "case_premature_return_04",
@@ -354,7 +354,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.105
+      "latency_sec": 0.089
     },
     {
       "scenario_id": "case_premature_return_05",
@@ -365,7 +365,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.108
+      "latency_sec": 0.147
     },
     {
       "scenario_id": "case_premature_return_06",
@@ -376,7 +376,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.112
+      "latency_sec": 0.099
     },
     {
       "scenario_id": "case_premature_return_07",
@@ -387,7 +387,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.108
+      "latency_sec": 0.088
     },
     {
       "scenario_id": "case_premature_return_08",
@@ -398,7 +398,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.111
+      "latency_sec": 0.093
     },
     {
       "scenario_id": "case_damaged_goods_01",
@@ -409,7 +409,7 @@
       "policy_hit": true,
       "verified": false,
       "handling_mode": "automated",
-      "latency_sec": 0.101
+      "latency_sec": 0.083
     },
     {
       "scenario_id": "case_damaged_goods_02",
@@ -420,7 +420,7 @@
       "policy_hit": true,
       "verified": false,
       "handling_mode": "automated",
-      "latency_sec": 0.096
+      "latency_sec": 0.085
     },
     {
       "scenario_id": "case_damaged_goods_03",
@@ -431,7 +431,7 @@
       "policy_hit": true,
       "verified": false,
       "handling_mode": "automated",
-      "latency_sec": 0.11
+      "latency_sec": 0.083
     },
     {
       "scenario_id": "case_damaged_goods_04",
@@ -442,7 +442,7 @@
       "policy_hit": true,
       "verified": false,
       "handling_mode": "automated",
-      "latency_sec": 0.099
+      "latency_sec": 0.083
     },
     {
       "scenario_id": "case_damaged_goods_05",
@@ -453,7 +453,7 @@
       "policy_hit": true,
       "verified": false,
       "handling_mode": "automated",
-      "latency_sec": 0.113
+      "latency_sec": 0.093
     },
     {
       "scenario_id": "case_damaged_goods_06",
@@ -464,7 +464,7 @@
       "policy_hit": true,
       "verified": false,
       "handling_mode": "automated",
-      "latency_sec": 0.107
+      "latency_sec": 0.106
     },
     {
       "scenario_id": "case_damaged_goods_07",
@@ -475,7 +475,7 @@
       "policy_hit": true,
       "verified": false,
       "handling_mode": "automated",
-      "latency_sec": 0.103
+      "latency_sec": 0.105
     },
     {
       "scenario_id": "case_damaged_goods_08",
@@ -486,7 +486,7 @@
       "policy_hit": true,
       "verified": false,
       "handling_mode": "automated",
-      "latency_sec": 0.103
+      "latency_sec": 0.102
     },
     {
       "scenario_id": "case_order_status_01",
@@ -497,7 +497,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.1
+      "latency_sec": 0.098
     },
     {
       "scenario_id": "case_order_status_02",
@@ -508,7 +508,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.137
+      "latency_sec": 0.108
     },
     {
       "scenario_id": "case_order_status_03",
@@ -519,7 +519,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.131
+      "latency_sec": 0.098
     },
     {
       "scenario_id": "case_order_status_04",
@@ -530,7 +530,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.107
+      "latency_sec": 0.102
     },
     {
       "scenario_id": "case_order_status_05",
@@ -552,7 +552,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.105
+      "latency_sec": 0.087
     },
     {
       "scenario_id": "case_order_status_07",
@@ -563,7 +563,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.102
+      "latency_sec": 0.082
     },
     {
       "scenario_id": "case_timeout_reconcile_01",
@@ -574,7 +574,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "human_assisted",
-      "latency_sec": 0.479
+      "latency_sec": 0.373
     },
     {
       "scenario_id": "case_timeout_reconcile_02",
@@ -585,7 +585,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "human_assisted",
-      "latency_sec": 0.426
+      "latency_sec": 0.528
     },
     {
       "scenario_id": "case_timeout_reconcile_03",
@@ -596,7 +596,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "human_assisted",
-      "latency_sec": 0.422
+      "latency_sec": 0.412
     },
     {
       "scenario_id": "case_timeout_reconcile_04",
@@ -607,7 +607,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "human_assisted",
-      "latency_sec": 0.437
+      "latency_sec": 0.374
     },
     {
       "scenario_id": "case_timeout_reconcile_05",
@@ -618,7 +618,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "human_assisted",
-      "latency_sec": 0.417
+      "latency_sec": 0.357
     },
     {
       "scenario_id": "case_security_tamper_01",
@@ -629,7 +629,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.105
+      "latency_sec": 0.086
     },
     {
       "scenario_id": "case_security_tamper_02",
@@ -640,7 +640,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.1
+      "latency_sec": 0.095
     },
     {
       "scenario_id": "case_security_tamper_03",
@@ -651,7 +651,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.109
+      "latency_sec": 0.084
     },
     {
       "scenario_id": "case_security_tamper_04",
@@ -662,7 +662,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.099
+      "latency_sec": 0.082
     },
     {
       "scenario_id": "case_security_tamper_05",
@@ -673,7 +673,7 @@
       "policy_hit": true,
       "verified": true,
       "handling_mode": "automated",
-      "latency_sec": 0.105
+      "latency_sec": 0.08
     }
   ]
 }

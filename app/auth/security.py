@@ -117,7 +117,14 @@ async def get_current_user(
     
     # Demo mode - ONLY in development
     if settings.AUTH_MODE == "demo" and settings.ENVIRONMENT == "development":
-        if token.startswith("rev_") or token == "admin":
+        if token in ("admin", "demo-admin"):
+            return AuthenticatedUser(
+                user_id=token,
+                role="admin",
+                name="System Administrator",
+                email="admin@electrovault.com"
+            )
+        elif token.startswith("rev_"):
             return AuthenticatedUser(
                 user_id=token,
                 role="reviewer",

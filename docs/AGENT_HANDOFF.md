@@ -81,14 +81,14 @@ All empirical checks were verified on **24 October 2026**:
 
 | Validation Check | Empirical Result | Verification Boundary |
 | :--- | :---: | :--- |
-| **Python Regression Suite** | **55 passed** in 28.64s | SQLite fixtures and live PostgreSQL container |
+| **Python Regression Suite** | **58 passed** in 47.01s | Local SQLite, PostgreSQL container, and REA security regressions |
 | **JavaScript Syntax Audit** | **Passed** | Clean syntax confirmed via `node --check` on portal JS |
 | **Synthetic Evaluation** | **60/60 correct (100%)** | 60 deterministic test cases, mock gateway |
 | **Verified Resolution Ledger** | **100% matched** | Ledger, operation, provider reference, and ticket verified |
 | **Unauthorized Action Immunity** | **0 leaks** | Strict cross-customer access denial (`403 Forbidden`) |
 | **Duplicate Refund Immunity** | **0 duplicate refunds** | Multi-worker contention and concurrency stress tests |
 | **Policy Retrieval Precision** | **100% hit rate** | Versioned policy corpus with lexical abstention |
-| **Process Restart Survival** | **Passed** | Pending review & confirmed refund survived 2 restarts |
+| **Process Restart Survival** | **Passed** | Pending review & confirmed refund survived 2 process restarts |
 | **Empty DB Migration** | **Reached 0003** | Verified on clean SQLite and PostgreSQL instances |
 | **Alembic Schema Drift** | **0 Drift Detected** | `alembic check` reports zero discrepancies |
 | **OIDC Qualification** | **Passed** | RS256 JWKS validation, customer mapping, and staff MFA |

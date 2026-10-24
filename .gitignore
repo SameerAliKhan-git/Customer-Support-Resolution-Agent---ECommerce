@@ -10,3 +10,4 @@ build/
 dist/
 backups/
 .agents/
+graphify-out/

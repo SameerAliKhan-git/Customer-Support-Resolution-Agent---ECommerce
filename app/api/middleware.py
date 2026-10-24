@@ -5,6 +5,7 @@ import logging
 import time
 import uuid
 from datetime import datetime, timedelta
+from urllib.parse import urlparse
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from app.config import settings
@@ -52,7 +53,12 @@ async def request_controls(request: Request, call_next):
     response.headers['X-Content-Type-Options']='nosniff'
     response.headers['Referrer-Policy']='same-origin'
     response.headers['Cache-Control']='no-store'
-    response.headers['Content-Security-Policy']="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    connect_src = "'self'"
+    if settings.OIDC_ISSUER:
+        parsed_issuer = urlparse(settings.OIDC_ISSUER)
+        if parsed_issuer.scheme and parsed_issuer.netloc:
+            connect_src = f"'self' {parsed_issuer.scheme}://{parsed_issuer.netloc}"
+    response.headers['Content-Security-Policy'] = f"default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src {connect_src}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
     if settings.ENVIRONMENT=='production':
         response.headers['Strict-Transport-Security']='max-age=31536000; includeSubDomains'
     route=request.scope.get('route')

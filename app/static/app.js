@@ -20,6 +20,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       currentTicketId = currentRunState.ticket_id;
       updateUIWithState(currentRunState);
       await loadTicketAuditTrail(currentTicketId);
+    } else if (response.status === 404 || response.status === 401 || response.status === 403) {
+      localStorage.removeItem("supportRun");
     }
   }
 });
@@ -309,13 +311,12 @@ async function decideApproval(proposalId, decision) {
     const res = await fetch(`/api/approvals/${item.approval_id}/decision`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer rev_supervisor"
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         decision: decision,
-        reviewer_id: "rev_supervisor",
-        reviewer_name: "Sarah Jenkins (Support Lead)",
+        reviewer_id: portalUser?.id || (demoReviewer ? "rev_supervisor" : undefined),
+        reviewer_name: portalUser?.name || (demoReviewer ? "Sarah Jenkins (Support Lead)" : undefined),
         decision_notes: notes
       })
     });

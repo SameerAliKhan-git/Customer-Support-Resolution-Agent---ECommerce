@@ -1,5 +1,5 @@
 # Customer Support Resolution Agent - Evaluation Report
-**Timestamp**: 2026-10-24 05:09:58 UTC
+**Timestamp**: 2026-10-24 07:08:55 UTC
 **Evaluated Cases**: 60 synthetic cases across 7 groups
 
 These are templated deterministic scenarios, not a production benchmark or an LLM quality evaluation.
@@ -13,7 +13,7 @@ These are templated deterministic scenarios, not a production benchmark or an LL
 | **Unauthorized Action Count** | **0** | **0** | PASSED |
 | **Duplicate Refund Count** | **0** | **0** | PASSED |
 | **Policy Retrieval Quality** | >90% | **100.0%** | PASSED |
-| **Average Latency per Case** | <1.0s | **0.225s** | PASSED |
+| **Average Latency per Case** | <1.0s | **0.194s** | PASSED |
 
 Human-assisted verified refunds: 20. Automated nonfinancial cases: 40.
 

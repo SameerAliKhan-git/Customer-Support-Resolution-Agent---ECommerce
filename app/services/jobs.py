@@ -3,6 +3,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import time
 import uuid
 from datetime import datetime, timedelta
 from sqlalchemy import select, update, or_, and_, delete
@@ -77,15 +78,16 @@ async def recover_pending():
     from app.services.approval_service import approval_service
     async with AsyncSessionLocal() as db:
         await approval_service.list_pending_approvals(db)  # expires pending reviews and releases reservations
-        runs = (await db.execute(select(WorkflowRun))).scalars().all()
-        for run in runs:
-            if run.state.get('is_completed'):
-                continue
-            proposal_id = run.state.get('proposed_action_id')
-            if proposal_id:
-                approval = (await db.execute(select(Approval).where(Approval.proposal_id==proposal_id))).scalar_one_or_none()
-                if approval and approval.decision in ('APPROVED','REJECTED','EXPIRED'):
-                    await enqueue(db, run.id, revive=True)
+        decided_proposals = set((await db.execute(
+            select(Approval.proposal_id).where(Approval.decision.in_(('APPROVED', 'REJECTED', 'EXPIRED')))
+        )).scalars().all())
+        if decided_proposals:
+            runs = (await db.execute(select(WorkflowRun))).scalars().all()
+            for run in runs:
+                if run.state and not run.state.get('is_completed'):
+                    proposal_id = run.state.get('proposed_action_id')
+                    if proposal_id and proposal_id in decided_proposals:
+                        await enqueue(db, run.id, revive=True)
         await db.commit()
 
 async def work_once(owner=None):
@@ -122,12 +124,16 @@ async def work_once(owner=None):
 
 async def main():
     owner=uuid.uuid4().hex
+    last_recovery = 0.0
     while True:
         async with AsyncSessionLocal() as db:
             await db.merge(ExecutionLease(id='worker-heartbeat',owner=owner,expires_at=datetime.utcnow()+timedelta(seconds=120)))
             await db.execute(delete(RateBucket).where(RateBucket.expires_at<datetime.utcnow()))
             await db.commit()
-        await recover_pending()
+        now_ts = time.monotonic()
+        if now_ts - last_recovery >= 10.0:
+            await recover_pending()
+            last_recovery = now_ts
         if not await work_once(owner):
             await asyncio.sleep(2)
 
