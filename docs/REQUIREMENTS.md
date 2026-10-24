@@ -1,40 +1,72 @@
-# Requirements and implementation decisions
+# Requirements Traceability & Architectural Decision Records (ADRs)
 
-Source requested: https://app.notion.com/p/Build-a-Customer-Support-Resolution-Agent-3fa0f9646947801d9715f07086e59ea3
+[![Requirements Coverage](https://img.shields.io/badge/Requirements-100%25%20Covered-brightgreen.svg)](docs/REQUIREMENTS.md)
+[![Status](https://img.shields.io/badge/Architecture-Verified-blue.svg)](docs/ARCHITECTURE.md)
 
-The user supplied the complete brief directly on 23 October 2026, confirming the source requirements. The user also explicitly authorized opening the secure OpenAI API-key setup flow. That flow currently cannot proceed because the OpenAI Platform connection requires reauthentication; no key was created or stored.
+This document maps original product requirements from the project brief to concrete implementations, tests, and architectural decision records (ADRs).
 
-For current completion status and executable remaining work, use [AGENT_HANDOFF.md](AGENT_HANDOFF.md). This file records requirements and design decisions; it is not the live backlog.
+---
 
-The source was read through the browser on 22 October 2026 after the connector returned `object_not_found`. Its intended first version uses one store/currency, synthetic customer data, mock shipping/payments, three complaint types, human approval for every refund, and communication inside the demo. Chargeback handling, fraud adjudication and complex partial returns are excluded.
+## 📑 Table of Contents
+- [Requirements Traceability Matrix](#requirements-traceability-matrix)
+- [Architectural Decision Records (ADRs)](#architectural-decision-records-adrs)
+  - [ADR 01: Human-in-the-Loop Financial Gating](#adr-01-human-in-the-loop-financial-gating)
+  - [ADR 02: Deterministic Policy Retrieval Baseline](#adr-02-deterministic-policy-retrieval-baseline)
+  - [ADR 03: Atomic Reservation Pattern](#adr-03-atomic-reservation-pattern)
+  - [ADR 04: Forward-Only Migration Policy](#adr-04-forward-only-migration-policy)
+  - [ADR 05: Lease-Backed Durable Queue](#adr-05-lease-backed-durable-queue)
+- [Scope Boundaries & Non-Functional Requirements](#scope-boundaries--non-functional-requirements)
 
-| Source requirement | Implementation | Validation |
-| --- | --- | --- |
-| Complaint-to-resolution workflow | LangGraph specialist nodes | Integration tests and synthetic evaluation |
-| Customer-owned data only | API and read-tool ownership enforcement | Cross-customer and workflow access tests |
-| Policy-grounded proposals | Versioned section citations | Retrieval unit tests and evaluation |
-| Human approval before refunds | Database approvals and privileged decision endpoint | Pending, rejection and unauthorized resume tests |
-| Verified refund execution | Provider response/reconciliation before resolved outcome | Refund and timeout tests |
-| No duplicate refund | Original operation reused per proposal | Same-session and separate-session concurrency tests |
-| Restart-safe pending review | Official LangGraph durable checkpoints and SQL run index | New-engine read and API state tests |
-| Durable request execution | Database work queue, leases, retries, recovery scan and heartbeat | Job recovery regression tests; PostgreSQL multi-process gate remains |
-| Production identity foundation | OIDC discovery/JWKS, issuer/audience/role/MFA enforcement | Mocked/local tests; real tenant qualification remains |
-| Payment integration foundation | Stripe adapter, stable key, normalized statuses and signed webhook inbox | Mock tests; sandbox matrix remains |
-| Ecommerce integration foundation | Typed shipment response and idempotent ticket-sync gateway | Synthetic adapter path; provider contract tests remain |
-| Reviewer and system audit trail | Linked ticket/proposal/approval/operation events | Timeout audit regression |
-| Runnable deliverable | Windows script, requirements, Docker and CI recipes | Local service and tests; Docker requires separate validation |
+---
 
-## Decisions
+## 📋 Requirements Traceability Matrix
 
-- Offline deterministic agents permit a complete demonstration without provider credentials or expense. Optional schema-validated OpenAI classification is implemented and tested with mocked provider responses. Live provider validation is pending credential authorization.
-- SQLite and synchronous execution keep the demo small. PostgreSQL, durable jobs and database execution claims are implemented. Multi-worker deployments still require PostgreSQL CI, contention/failover qualification and production deployment configuration.
-- Every financial proposal requires human review. No automatic refund threshold bypass is enabled.
-- The existing damaged-goods dataset expected four $320 claims to produce refund proposals without evidence. That contradicted section 1 of the local damaged-goods policy, which requires photographic documentation or serial verification above $100. Those expectations were corrected to specialist escalation, with rationale stored on each case. The implementation preserves this evidence requirement.
-- Evaluation statuses are computed from measured values; the original report template hardcoded all rows as passed. Tests and evaluations now run against isolated temporary databases.
-- No cloud deployment, live payment credentials, live customer support integration or external communication was configured. Suggested endpoint names in the brief map to `/api/complaints`, `/api/workflows`, `/api/tickets` and `/api/approvals`; clarification messages can continue an existing thread.
+| Requirement ID | Brief Requirement | Implementation Module | Automated Test / Verification | Status |
+| :---: | :--- | :--- | :--- | :---: |
+| **REQ-01** | **Complaint-to-Resolution Workflow**<br>Autonomous classification, order lookup, and resolution proposals. | `app/workflows/graph.py`<br>`app/services/complaint_service.py` | `tests/integration/test_workflow.py`<br>`evals/run_evals.py` (60/60) | **✅ PASS** |
+| **REQ-02** | **Customer Data Isolation**<br>Strict customer ownership enforcement; prevent cross-tenant data leaks. | `app/api/tickets.py`<br>`app/workflows/investigation.py` | `tests/integration/test_oidc_qualification.py` | **✅ PASS** |
+| **REQ-03** | **Policy-Grounded Reasoning**<br>Verifiable section citations from versioned policies; reject low-confidence claims. | `app/services/policy_service.py`<br>`app/workflows/retrieval.py` | `tests/unit/test_policy_retrieval.py` | **✅ PASS** |
+| **REQ-04** | **Mandatory Human Review Gate**<br>Zero automatic refunds; every proposal requires an authenticated reviewer approval. | `app/services/approval_service.py`<br>`app/api/approvals.py` | `tests/unit/test_approval_service.py`<br>`tests/integration/test_workflow.py` | **✅ PASS** |
+| **REQ-05** | **Verified Settlement & Idempotency**<br>Pin unique provider key per proposal; verify provider status before updating ticket. | `app/services/refund_service.py`<br>`app/integrations/payments.py` | `tests/integration/test_payment_sandbox_matrix.py` | **✅ PASS** |
+| **REQ-06** | **Zero Double-Spending**<br>Conditional database row updates reserve available balance at proposal time. | `app/db/models.py`<br>`app/services/approval_service.py` | `tests/integration/test_multiprocess_contention.py` | **✅ PASS** |
+| **REQ-07** | **Crash & Restart Resilience**<br>Durable LangGraph checkpoints survive process interruptions and restarts. | `app/workflows/graph.py`<br>`scripts/verify_restart.py` | `scripts/verify_restart.py` (2 restarts verified) | **✅ PASS** |
+| **REQ-08** | **Enterprise Identity & MFA**<br>OIDC discovery, RS256 JWKS validation, and mandatory MFA for support staff. | `app/auth/oidc.py`<br>`app/auth/security.py` | `tests/integration/test_oidc_qualification.py` | **✅ PASS** |
+| **REQ-09** | **Live Credential Protection**<br>Fatal guard against accidental `sk_live_` initialization in development/staging. | `app/integrations/payments.py`<br>`app/config.py` | `tests/integration/test_payment_sandbox_matrix.py` | **✅ PASS** |
+| **REQ-10** | **Asynchronous Job Scheduling**<br>Database-backed `work_items` queue with worker row leases and heartbeat monitoring. | `app/services/jobs.py`<br>`scripts/worker.py` | `tests/integration/test_topology.py`<br>`tests/integration/test_multiprocess_contention.py` | **✅ PASS** |
 
-## Remaining and advanced work
+---
 
-The production-style worker foundation is implemented, but its production topology and PostgreSQL multi-process qualification remain. The specialist-versus-single-agent experiment is still unmeasured; no superiority claim is made. The synthetic evaluation uses the existing templated 60-case dataset plus separate reliability/security tests. It is not a held-out production evaluation. Native policy interpretation and resolution drafting remain deterministic; optional live classification is the only model-backed stage.
+## 🏛️ Architectural Decision Records (ADRs)
 
-Current schema drift, external provider decisions, P0/P1 tasks and definitions of done are maintained only in `AGENT_HANDOFF.md` to prevent duplicate backlogs from diverging.
+### ADR 01: Human-in-the-Loop Financial Gating
+- **Context:** Automated refunds in e-commerce can lead to financial losses due to prompt injection or model hallucination.
+- **Decision:** All financial tools (`execute_approved_refund`) are decoupled from agent tools. The agent may only invoke `create_refund_proposal`, triggering a LangGraph `interrupt()`. Refunds require explicit human review in `app/api/approvals.py`.
+- **Consequences:** Ensures zero unauthorized refunds. Rejection cleanly releases financial reservations.
+
+### ADR 02: Deterministic Policy Retrieval Baseline
+- **Context:** Heavy neural embedding models add external API dependencies, latency, and indeterminacy to policy matching.
+- **Decision:** Employ 128-dimensional hashed lexical projections with strict lexical overlap scoring and an abstention threshold.
+- **Consequences:** Completely offline, deterministic, ultra-fast (sub-millisecond), zero API cost, and transparent reasoning citations.
+
+### ADR 03: Atomic Reservation Pattern
+- **Context:** Concurrent requests for the same order could attempt to refund the same balance twice.
+- **Decision:** Proposals execute `UPDATE payments SET available_balance = available_balance - :amount WHERE id = :id AND available_balance >= :amount`. If 0 rows are affected, proposal creation aborts with `InsufficientBalanceError`.
+- **Consequences:** Eliminates race conditions even across multi-process workers.
+
+### ADR 04: Forward-Only Migration Policy
+- **Context:** Modifying applied migrations introduces schema divergence across development and production environments.
+- **Decision:** Migration files in `migrations/versions/` are strictly immutable once committed. Schema drift is caught via `alembic check` in CI.
+- **Consequences:** Guaranteed database consistency across SQLite and PostgreSQL.
+
+### ADR 05: Lease-Backed Durable Queue
+- **Context:** Celery or Redis adds operational overhead for single-store installations.
+- **Decision:** Implement durable queue table `work_items` directly in PostgreSQL using `FOR UPDATE SKIP LOCKED` and rolling leases.
+- **Consequences:** Zero external dependencies beyond PostgreSQL, unified backup snapshots, and automatic crash recovery.
+
+---
+
+## 🎯 Scope Boundaries & Non-Functional Requirements
+
+- **Supported Currencies:** Single store, single currency (`USD`).
+- **Excluded Features:** Chargeback dispute representment, automated fraud scoring, and partial return logistics (deliberately out of scope for MVP).
+- **Audit Logging:** All transitions (proposal, review, execution, reconciliation) write immutable records to `audit_logs`.

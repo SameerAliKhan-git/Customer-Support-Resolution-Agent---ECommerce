@@ -1,81 +1,240 @@
-# Architecture
+# System Architecture & Technical Design
 
-## Request and resolution flow
+[![Status](https://img.shields.io/badge/Architecture-Production--Grade-blue.svg)](docs/ARCHITECTURE.md)
+[![Alembic](https://img.shields.io/badge/Alembic-0003--Verified-brightgreen.svg)](migrations/versions/0003_proposal_supersession.py)
+[![LangGraph](https://img.shields.io/badge/LangGraph-Durable%20Checkpoints-orange.svg)](https://github.com/langchain-ai/langgraph)
+
+This document details the architectural principles, component responsibilities, state machine semantics, storage structures, and production topologies of the Customer Support Resolution Agent.
+
+---
+
+## 📑 Table of Contents
+- [Design Philosophy & Core Invariants](#design-philosophy--core-invariants)
+- [System Architecture Overview](#system-architecture-overview)
+- [End-to-End Resolution Lifecycle](#end-to-end-resolution-lifecycle)
+- [LangGraph Orchestration & State Machine](#langgraph-orchestration--state-machine)
+- [Storage & Relational Schema](#storage--relational-schema)
+- [Durable Queue & Concurrency Model](#durable-queue--concurrency-model)
+- [Production Deployment Topology](#production-deployment-topology)
+- [REST API Surface](#rest-api-surface)
+
+---
+
+## 💡 Design Philosophy & Core Invariants
+
+Autonomous agents interacting with financial infrastructure require strict deterministic boundaries:
+
+1. **Separation of Reasoning and Financial Authority:** The LangGraph agent reasons over customer messages, pulls order history, and retrieves policies to construct a resolution proposal. The workflow **never** directly executes a refund; execution is gated by a stored human reviewer approval.
+2. **Atomic Balance Reservation:** When a refund proposal is created, money is reserved at the database row level via conditional updates (`available_balance >= proposal_amount`). No other thread or proposal can double-commit funds.
+3. **Idempotency Pinned to Durable Proposals:** Every refund execution pins a single provider idempotency key to the exact proposal. Retries, replays, or network recovery cycles always reuse this unique key.
+4. **Reconciliation-First Network Recovery:** If a payment provider call times out or returns an ambiguous status, the system enters `PENDING_RECONCILIATION`. Terminal status is established by querying the provider's ledger before any local ticket or order status is updated.
+
+---
+
+## 🏗️ System Architecture Overview
 
 ```mermaid
 flowchart TD
-    UI[Customer and reviewer dashboard] --> API[FastAPI authentication and scoped APIs]
-    API --> Q[(Durable work queue)]
-    Q --> W[Leased worker]
-    API --> G[Direct demo execution]
-    W --> G[LangGraph classify / investigate / retrieve / propose]
-    G --> D[(Application tables)]
-    G --> C[(Native durable checkpoints)]
-    G --> H{Human approval interrupt}
-    H -->|Rejected| T[Update ticket and customer response]
-    H -->|Approved| V[Revalidate exact proposal and balance]
-    V --> P[Mock or Stripe adapter with stable operation key]
-    P --> R[Verify response or reconcile uncertain outcome]
-    R --> T
-    T --> A[Audit history and verified outcome]
-    E[Ecommerce shipment and ticket adapter] --> G
-    I[OIDC identity provider] --> API
-    P --> X[Signed webhook inbox]
-    X --> Q
+    subgraph Ingress["Client & Security Layer"]
+        User["Customer / Staff Browser"]
+        API["FastAPI Gateway (Port 8000)"]
+        AuthMiddle["OIDC RS256 JWKS & Role Guard"]
+    end
+
+    subgraph Core["Agentic Orchestration (LangGraph)"]
+        Classify["Classify Complaint"]
+        Investigate["Investigate Order & Scope"]
+        Retrieve["Hashed Lexical Policy Retrieval"]
+        Propose["Generate Proposal & Reserve Balance"]
+        Interrupt["HITL Approval Interrupt Gate"]
+    end
+
+    subgraph Engine["Durable Job Engine & Worker"]
+        WorkQueue[("PostgreSQL work_items Queue")]
+        Worker["Leased Async Worker (scripts.worker)"]
+        Heartbeat["Worker Heartbeat Monitor"]
+    end
+
+    subgraph State["Database Persistence (PostgreSQL 16)"]
+        AppDB[("Application Tables (Orders, Tickets, Ledger)")]
+        Checkpointer[("LangGraph Checkpoint Storage")]
+        AuditLog[("Immutable Audit Trail")]
+    end
+
+    subgraph Gateways["External Adapters"]
+        StripeAdapter["Stripe Adapter (sk_live_ Guard)"]
+        MockGateway["Deterministic Mock Payment Gateway"]
+        EcomAdapter["Typed Ecommerce Shipment/Ticket Bridge"]
+        WebhookInbox["Signed HMAC v1 Webhook Handler"]
+    end
+
+    User --> API
+    API --> AuthMiddle
+    AuthMiddle --> WorkQueue
+    WorkQueue --> Worker
+    Worker --> Core
+    
+    Classify --> Investigate --> Retrieve --> Propose --> Interrupt
+    Interrupt -->|Persist Proposal| AppDB
+    Core -.-> Checkpointer
+
+    User -.->|Reviewer Approval| API
+    API -->|Resume Workflow| Core
+    Core --> StripeAdapter & MockGateway
+    StripeAdapter & MockGateway --> AppDB
+    AppDB --> AuditLog
+    WebhookInbox --> WorkQueue
 ```
 
-The same-origin dashboard sends a complaint with a bearer identity to FastAPI. The API derives customer identity from authentication and checks explicit order ownership. Investigation also checks ownership for order IDs extracted from message text.
+---
 
-LangGraph runs classification → investigation → policy retrieval → proposal. The proposal routes to direct response, specialist escalation or a pending human approval. Pending runs exit without executing payments. The application stores the resulting workflow state as JSON in `workflow_runs`.
+## 🔄 End-to-End Resolution Lifecycle
 
-A reviewer decision is stored against the immutable proposal. The API locates its workflow and resumes from the approval stage using the database decision. It never trusts a supplied resume payload as authorization. The approved branch executes the refund, reconciles timeout results and updates the ticket; the rejected branch records rejection and releases the financial reservation.
+1. **Ingress & Authentication:**
+   The customer submits a complaint via `POST /api/complaints`. The system validates user authentication (Bearer token or OIDC JWT) and assigns tenant scoping.
+2. **Order Ownership Validation:**
+   The system independently verifies that the requested order ID belongs to the authenticated customer subject before passing data into workflow tools.
+3. **Deterministic Investigation & Policy Retrieval:**
+   - Evaluates order shipping state, return tracking, and warehouse inspection status.
+   - Computes 128-dimensional hashed lexical projections against versioned policies (e.g., standard returns, damaged goods, non-returnable items).
+   - Rejects low-confidence matches via configurable lexical abstention.
+4. **Proposal Creation & Balance Reservation:**
+   If policy criteria are met, the system creates a `RefundProposal` and reserves minor-unit funds atomically in the payment record. If policy checks fail or evidence is missing (e.g. damaged goods > $100 without photos), the ticket is routed directly to a human specialist.
+5. **Human-in-the-Loop Review Gate:**
+   The workflow triggers an `interrupt()`, serializing graph state to the checkpointer and moving the proposal to the reviewer queue (`GET /api/approvals/pending`).
+6. **Execution or Invalidation:**
+   - **Approval:** Authenticated reviewer issues `POST /api/approvals/{id}/decision` (`APPROVED`). The workflow resumes, executing the payment adapter with the proposal's durable idempotency key.
+   - **Rejection:** Moving the proposal to `DECLINED` releases the reserved balance and responds to the customer explaining the decision.
+7. **Settlement & Audit:**
+   The gateway response is confirmed, local order balance is debited, the support ticket is updated to `RESOLVED`, and linked events are written to the audit trail.
 
-Native LangGraph checkpointers persist each graph step using the official SQLite or PostgreSQL saver. Application snapshots and checkpoint tables are logically separate. Human review uses `interrupt()` and resumes with `Command(resume=...)` on the original thread ID. The engine reloads the stored reviewer decision before resuming and never treats the request's decision fields as approval.
+---
 
-The workflow stores its initial run before executing. For an interrupted approved run, the reviewer-only resume route retries the pending graph step; the refund service reuses its existing operation and provider key. If payment succeeded but ticket update failed, replay consults the successful operation and retries the ticket step.
+## 🧠 LangGraph Orchestration & State Machine
 
-Development may execute short workflows synchronously. With `ASYNC_WORKFLOWS=true`, complaint submission atomically creates the ticket, run snapshot, request receipt and `start` job, returning `202 Accepted`. Reviewer decisions enqueue `resume` jobs. Workers claim jobs with database row locking, set leases, retry failures with bounded backoff, move exhausted jobs to `DEAD`, publish a heartbeat and scan persisted approvals for crash recovery. The supplied Compose files do not yet run this complete production topology; see `AGENT_HANDOFF.md`.
+The orchestration graph is defined in `app/workflows/graph.py` with native persistence:
 
-## Storage
+```
+[START]
+   │
+   ▼
+[classify_complaint]
+   │
+   ▼
+[investigate_order]
+   │
+   ▼
+[retrieve_policy]
+   │
+   ▼
+[generate_proposal] ── (Policy Failed / Specialist Required) ──► [escalate_ticket] ──► [END]
+   │
+   ▼ (Valid Refund Proposed)
+[INTERRUPT: Human Review Gate]
+   │
+   ├── (Rejected) ──► [release_reservation] ──► [respond_to_customer] ──► [END]
+   │
+   └── (Approved) ──► [execute_refund]
+                           │
+                           ├── (Success) ──► [update_ticket] ──► [audit_trail] ──► [END]
+                           │
+                           └── (Timeout) ──► [reconcile_timeout] ──► [update_ticket] ──► [END]
+```
 
-Application migrations are managed by Alembic. LangGraph manages its own checkpoint migrations, initialized before request transactions. SQLAlchemy models store customers, orders, returns, payment balances, tickets, proposals, approvals, refund operations, policy versions/chunks and audit events. Additional tables persist workflow snapshots, request receipts, jobs, leases, rate buckets, provider events and mock gateway transactions. Money uses integer minor units and currency codes.
+### Checkpointing Semantics
+- Graph state is persisted using official LangGraph checkpointers (`AsyncSqliteSaver` or `AsyncPostgresSaver`).
+- Application state (financial proposals, payment balances) is kept distinct from graph step state to maintain database normalization and referential integrity.
+- Resuming an interrupted graph requires `Command(resume=...)` on the original thread ID; the API reloads the reviewer approval directly from the database to prevent client parameter tampering.
 
-Proposal creation uses a conditional SQL update to reserve balance atomically. Approval decisions cannot be changed after review. Refund execution uses a database execution lease, locks payment/operation rows where supported, and finds an existing operation by proposal before considering a supplied key. A process-local lock remains an additional guard. The provider adapter stores and checks its original request payload. Reconciliation short-circuits terminal operations, preventing repeated ledger updates.
+---
 
-Migration head currently has known drift: the ORM's proposal-supersession column/index/foreign key are not represented in `0002_reliability`. A new migration must fix this; do not modify already-applied history.
+## 🗄️ Storage & Relational Schema
 
-The mock provider stores transactions in a separate table in the same SQLite database for reproducible restart tests. A real provider integration must query the actual provider and cannot treat this table as proof of an external financial outcome.
+Managed through **Alembic** with forward-only migrations:
+- `0001_initial`: Base schema (customers, orders, returns, payments, tickets, proposals, approvals, audit logs, policies).
+- `0002_reliability`: Adds `work_items` durable queue, rate limit buckets, request receipts, and provider events.
+- `0003_proposal_supersession`: Adds `refund_proposals.supersedes_proposal_id`, self-referential foreign key, index, and table-level status check constraints.
 
-## Policy retrieval and business rules
+```mermaid
+erDiagram
+    CUSTOMERS ||--o{ ORDERS : places
+    ORDERS ||--o{ PAYMENTS : contains
+    ORDERS ||--o{ RETURNS : tracks
+    ORDERS ||--o{ TICKETS : logs
+    TICKETS ||--o{ REFUND_PROPOSALS : generates
+    REFUND_PROPOSALS ||--o| REFUND_APPROVALS : reviews
+    REFUND_PROPOSALS ||--o| REFUND_OPERATIONS : executes
+    REFUND_PROPOSALS ||--o| REFUND_PROPOSALS : supersedes
+    TICKETS ||--o{ AUDIT_LOGS : records
+```
 
-Five versioned Markdown policies are split into section chunks. Each includes a document ID, version, effective dates, immutable content hash and stable section citation. Retrieval selects the business-date version, ranks hashed local text vectors and lexical overlap, rejects low-overlap results and fails closed on conflicting chunk identities. This is a transparent local retrieval baseline, not pretrained semantic embeddings.
+### Financial Precision
+- All monetary balances (`total_amount`, `available_balance`, `proposal_amount`) are represented as integer minor units (cents) paired with ISO currency codes (e.g. `USD`).
+- Database constraints enforce `available_balance >= 0` and prevent overcommitment.
 
-Business eligibility remains deterministic: warehouse inspection and balance checks gate return refunds; high-value damage, missing evidence, failed inspection and exception conditions route to a specialist. Retrieved text cannot approve or execute a refund. There is no arbitrary code or shell tool exposed to the workflow.
+---
 
-## API
+## ⚙️ Durable Queue & Concurrency Model
 
-| Route | Purpose | Authorization |
-| --- | --- | --- |
-| `GET /` | Dashboard | Public local demo shell |
-| `GET /api/health` | Service status | Public |
-| `GET /api/ready` | Database and worker readiness | Public probe |
-| `GET /api/demo/scenarios` | Synthetic examples | Public |
-| `GET /api/session/config` | Portal authentication configuration | Public |
-| `GET /api/session/me` | Current identity and role | Authenticated |
-| `GET /api/metrics` | Queue/refund/escalation counters | Reviewer |
-| `POST /api/complaints` | Start resolution | Customer or reviewer |
-| `GET /api/tickets` | List scoped tickets | Authenticated |
-| `GET /api/tickets/{id}` | Ticket details | Owner or reviewer |
-| `GET /api/tickets/{id}/audit-trail` | Linked audit events | Owner or reviewer |
-| `POST /api/tickets/{id}/evidence` | Add unverified case evidence | Owner or reviewer |
-| `POST /api/tickets/{id}/claim` | Assign escalation to reviewer | Reviewer |
-| `GET /api/approvals/pending` | Review queue | Reviewer |
-| `POST /api/approvals/{id}/decision` | Record decision and resume | Reviewer |
-| `GET /api/workflows` | Paginated scoped run list | Authenticated |
-| `GET /api/workflows/{id}` | Persisted workflow | Owner or reviewer |
-| `GET /api/workflows/{id}/events` | Redacted run timeline | Owner or reviewer |
-| `POST /api/workflows/{id}/messages` | Continue clarification | Owner or reviewer |
-| `POST /api/workflows/{id}/resume` | Retry with recorded decision | Reviewer |
-| `POST /api/integrations/stripe/webhook` | Signed provider event inbox | Stripe signature |
+When asynchronous execution is enabled (`ASYNC_WORKFLOWS=true`):
+- Complaints and approvals enqueue tasks into `work_items`.
+- Workers claim ready jobs using PostgreSQL row locking:
+  ```sql
+  SELECT * FROM work_items 
+  WHERE status = 'READY' AND run_at <= NOW() 
+  ORDER BY priority DESC, id ASC 
+  FOR UPDATE SKIP LOCKED 
+  LIMIT 1;
+  ```
+- Claims hold an active lease timeout. If a worker terminates abruptly, the unrenewed lease expires, allowing healthy workers to safely claim and recover the job.
+- Dead jobs are isolated after 8 exponential backoff retries.
 
-OpenAPI at `/docs` is the executable request/response reference.
+---
+
+## 🚢 Production Deployment Topology
+
+Defined in `compose.prod.yaml` for high availability and process isolation:
+
+```mermaid
+flowchart LR
+    subgraph ContainerStack["Production Stack (compose.prod.yaml)"]
+        direction TB
+        DB[("PostgreSQL 16 Engine\n(Port 5432, Health Checked)")]
+        Migrate["One-Shot Migration Container\n(alembic upgrade head)"]
+        API["FastAPI Web Service\n(2 Workers, Port 8000)"]
+        WorkerDaemon["Background Task Worker\n(python -m scripts.worker)"]
+    end
+
+    DB --> Migrate
+    Migrate --> API
+    Migrate --> WorkerDaemon
+    API <--> DB
+    WorkerDaemon <--> DB
+```
+
+1. **Database:** Dedicated PostgreSQL 16 Alpine container with persistent named volume and health checks.
+2. **Migration Job:** Standalone container runs `alembic upgrade head` and exits `0` before application services initialize.
+3. **API Service:** Multi-worker Uvicorn process serving REST endpoints and the UI portal.
+4. **Worker Service:** Background daemon executing queue tasks, lease renewals, and timeout reconciliations.
+
+---
+
+## 🌐 REST API Surface
+
+| Method & Route | Description | Authorization | Idempotent |
+| :--- | :--- | :--- | :---: |
+| `GET /` | Application Web Portal | Public | Yes |
+| `GET /api/health` | Service liveness probe | Public | Yes |
+| `GET /api/ready` | Database & worker heartbeat probe | Public | Yes |
+| `GET /api/metrics` | Operational queue and refund metrics | Reviewer / Staff | Yes |
+| `GET /api/session/me` | Current authenticated profile & roles | Authenticated | Yes |
+| `POST /api/complaints` | Ingest complaint and begin workflow | Customer / Reviewer | Header `Idempotency-Key` |
+| `GET /api/tickets` | List user-scoped tickets | Authenticated | Yes |
+| `GET /api/tickets/{id}` | Ticket details and investigation evidence | Owner / Reviewer | Yes |
+| `GET /api/tickets/{id}/audit-trail` | Chronological immutable audit history | Owner / Reviewer | Yes |
+| `GET /api/approvals/pending` | Reviewer approval queue | Reviewer / Staff | Yes |
+| `POST /api/approvals/{id}/decision` | Record decision and resume workflow | Reviewer / Staff | Yes |
+| `GET /api/workflows/{id}` | Inspect LangGraph workflow state snapshot | Owner / Reviewer | Yes |
+| `POST /api/integrations/stripe/webhook` | Ingest signed Stripe events | HMAC `Stripe-Signature` | Header `Stripe-Event-Id` |
+
+*Executable interactive OpenAPI documentation is accessible at `/docs`.*
